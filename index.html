@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dungeon Crawler">
+<meta name="theme-color" content="#0a0a0f">
+<title>Dungeon Crawler</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-512.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:#0a0a0f;}
+body{color:#e0d8c0;font-family:'Courier New',monospace;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+#app{max-width:430px;margin:0 auto;height:100%;height:100dvh;background:#0a0a0f;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+#hud{background:#111118;border-bottom:1px solid #333;padding:8px 10px;flex-shrink:0;}
+.hud-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.hud-name{font-size:13px;color:#ffd700;font-weight:bold;}
+.hud-floor{font-size:11px;color:#888;}
+.hud-floor.boss-floor{color:#e74c3c;font-weight:bold;animation:pulse 1s infinite;}
+.hud-floor.shop-floor{color:#2ecc71;font-weight:bold;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.bars{display:flex;gap:8px;margin-bottom:6px;}
+.bar-wrap{flex:1;}
+.bar-label{font-size:10px;color:#888;margin-bottom:2px;display:flex;justify-content:space-between;}
+.bar{height:8px;background:#222;border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width 0.3s;}
+.hp-fill{background:#c0392b;}.xp-fill{background:#8e44ad;}.mp-fill{background:#2980b9;}
+.hud-stats{display:flex;gap:6px;font-size:10px;color:#aaa;flex-wrap:wrap;}
+.stat-pill{background:#1a1a24;padding:2px 6px;border-radius:3px;border:1px solid #333;}
+.stat-pill span{color:#ffd700;}
+#boss-bar-wrap{display:none;background:#1a0a0a;border:1px solid #8e44ad;border-radius:6px;padding:5px 8px;margin-bottom:5px;}
+#boss-bar-wrap.visible{display:block;}
+#boss-bar-label{font-size:11px;color:#e74c3c;display:flex;justify-content:space-between;margin-bottom:2px;}
+#boss-bar{height:8px;background:#222;border-radius:4px;overflow:hidden;}
+#boss-bar-fill{height:100%;border-radius:4px;background:#e74c3c;transition:width 0.3s;}
+#map-area{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#050508;}
+#map{font-size:14px;line-height:1.4;letter-spacing:2px;font-family:'Courier New',monospace;white-space:pre;}
+#log-area{background:#0d0d14;border-top:1px solid #333;height:80px;overflow-y:auto;padding:5px 10px;flex-shrink:0;}
+.log-entry{font-size:11px;line-height:1.5;}
+.log-hit{color:#e74c3c;}.log-miss{color:#666;}.log-loot{color:#f39c12;}.log-level{color:#9b59b6;}.log-info{color:#3498db;}.log-good{color:#2ecc71;}.log-boss{color:#e74c3c;font-weight:bold;}.log-shop{color:#2ecc71;}
+#controls{background:#111118;border-top:1px solid #333;padding:8px 10px;flex-shrink:0;}
+.dpad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:3px;margin:0 auto 8px;width:fit-content;}
+.dpad-btn{background:#1a1a24;border:1px solid #444;border-radius:6px;color:#ccc;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;}
+.dpad-btn:active{background:#2a2a3a;}
+.dpad-center{background:#222;font-size:10px;color:#666;}
+.action-btns{display:flex;gap:5px;justify-content:center;}
+.act-btn{flex:1;max-width:90px;background:#1a1a24;border:1px solid #555;border-radius:6px;color:#ccc;font-size:10px;padding:7px 3px;cursor:pointer;text-align:center;touch-action:manipulation;}
+.act-btn:active{background:#2a2a3a;}
+.act-btn.primary{border-color:#f39c12;color:#ffd700;}
+.act-btn.magic{border-color:#8e44ad;color:#bb8fce;}
+.act-btn.shop{border-color:#2ecc71;color:#2ecc71;}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.93);display:flex;align-items:center;justify-content:center;z-index:100;padding:12px;}
+#modal{background:#111118;border:1px solid #555;border-radius:12px;padding:20px;max-width:390px;width:100%;max-height:88vh;overflow-y:auto;}
+#modal h2{color:#ffd700;margin-bottom:10px;font-size:17px;}
+#modal p{font-size:12px;color:#aaa;margin-bottom:7px;line-height:1.5;}
+.class-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.class-card{background:#1a1a24;border:1px solid #444;border-radius:8px;padding:11px;cursor:pointer;touch-action:manipulation;}
+.class-card:active{border-color:#ffd700;}
+.class-card h3{color:#ffd700;font-size:12px;margin-bottom:3px;}
+.class-card p{font-size:10px;color:#888;margin:0;}
+.class-icon{font-size:22px;margin-bottom:5px;display:block;}
+.modal-btn{display:block;width:100%;background:#1a1a24;border:1px solid #555;border-radius:8px;color:#ffd700;padding:11px;font-size:13px;cursor:pointer;margin-top:10px;font-family:'Courier New',monospace;touch-action:manipulation;}
+.modal-btn:active{background:#2a2a3a;}
+.modal-btn.danger{border-color:#c0392b;color:#e74c3c;}
+.stat-up-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0;}
+.stat-up-btn{background:#1a1a24;border:1px solid #444;border-radius:8px;padding:9px;cursor:pointer;text-align:center;touch-action:manipulation;}
+.stat-up-btn:active{border-color:#ffd700;}
+.stat-up-btn .sn{color:#aaa;font-size:10px;}
+.stat-up-btn .sv{color:#ffd700;font-size:17px;font-weight:bold;}
+.boss-intro{border:1px solid #e74c3c;border-radius:8px;padding:11px;margin:10px 0;background:#1a0808;}
+.boss-intro h3{color:#e74c3c;font-size:14px;margin-bottom:5px;}
+.boss-reward{border:1px solid #9b59b6;border-radius:8px;padding:11px;margin:7px 0;background:#100a1a;}
+.boss-reward h3{color:#bb8fce;font-size:12px;margin-bottom:5px;}
+.inv-item{background:#1a1a24;border-radius:6px;padding:7px 9px;margin-bottom:5px;border-left:3px solid #555;display:flex;align-items:center;gap:8px;}
+.inv-item.common{border-left-color:#888;}.inv-item.uncommon{border-left-color:#2ecc71;}.inv-item.rare{border-left-color:#3498db;}.inv-item.epic{border-left-color:#9b59b6;}
+.inv-item-info{flex:1;min-width:0;}
+.inv-item-name{font-size:12px;font-weight:bold;}
+.inv-item-stat{color:#ffd700;font-size:10px;}
+.inv-item-rarity{font-size:9px;}
+.inv-item.common .inv-item-rarity{color:#888;}.inv-item.uncommon .inv-item-rarity{color:#2ecc71;}.inv-item.rare .inv-item-rarity{color:#3498db;}.inv-item.epic .inv-item-rarity{color:#9b59b6;}
+.inv-btn-row{display:flex;gap:4px;flex-shrink:0;}
+.inv-btn{background:#222;border:1px solid #444;border-radius:4px;color:#ccc;font-size:10px;padding:3px 7px;cursor:pointer;font-family:'Courier New',monospace;touch-action:manipulation;}
+.inv-btn:active{background:#333;}
+.inv-btn.equip{border-color:#f39c12;color:#ffd700;}
+.inv-btn.drop{border-color:#c0392b;color:#e74c3c;}
+.inv-btn.use{border-color:#9b59b6;color:#bb8fce;}
+.equipped-row{display:flex;gap:8px;margin-bottom:10px;}
+.eq-slot{flex:1;background:#0d1020;border:1px solid #333;border-radius:6px;padding:7px;}
+.eq-slot-label{color:#666;font-size:9px;margin-bottom:2px;}
+.eq-slot-name{color:#ffd700;font-size:11px;}
+.eq-slot-stat{color:#888;font-size:10px;}
+.shop-item{background:#1a1a24;border-radius:6px;padding:8px 10px;margin-bottom:6px;border-left:3px solid #27ae60;display:flex;align-items:center;gap:8px;}
+.shop-item-info{flex:1;min-width:0;}
+.shop-item-name{font-size:12px;font-weight:bold;}
+.shop-item-stat{color:#ffd700;font-size:10px;}
+.shop-buy-btn{background:#1a2a1a;border:1px solid #27ae60;border-radius:4px;color:#2ecc71;font-size:10px;padding:4px 8px;cursor:pointer;font-family:'Courier New',monospace;flex-shrink:0;touch-action:manipulation;}
+.shop-buy-btn:active{background:#2a3a2a;}
+.shop-buy-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.gold-display{color:#ffd700;font-size:14px;font-weight:bold;margin-bottom:10px;}
+.section-title{color:#888;font-size:11px;margin:10px 0 6px;border-bottom:1px solid #222;padding-bottom:4px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="hud-top"><div class="hud-name" id="hud-name">Hero</div><div class="hud-floor" id="hud-floor">Floor 1</div></div>
+    <div id="boss-bar-wrap"><div id="boss-bar-label"><span id="boss-name-lbl">Boss</span><span id="boss-hp-lbl">0/0</span></div><div id="boss-bar"><div id="boss-bar-fill" style="width:100%"></div></div></div>
+    <div class="bars">
+      <div class="bar-wrap"><div class="bar-label"><span>HP</span><span id="hp-txt">-</span></div><div class="bar"><div class="bar-fill hp-fill" id="hp-bar" style="width:100%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>MP</span><span id="mp-txt">-</span></div><div class="bar"><div class="bar-fill mp-fill" id="mp-bar" style="width:100%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>XP</span><span id="xp-txt">-</span></div><div class="bar"><div class="bar-fill xp-fill" id="xp-bar" style="width:0%"></div></div></div>
+    </div>
+    <div class="hud-stats" id="hud-stats"></div>
+  </div>
+  <div id="map-area"><div id="map"></div></div>
+  <div id="log-area"></div>
+  <div id="controls">
+    <div class="dpad">
+      <div></div><div class="dpad-btn" id="bn">&#9650;</div><div></div>
+      <div class="dpad-btn" id="bw">&#9664;</div><div class="dpad-btn dpad-center" id="bwait">wait</div><div class="dpad-btn" id="be">&#9654;</div>
+      <div></div><div class="dpad-btn" id="bs">&#9660;</div><div></div>
+    </div>
+    <div class="action-btns">
+      <button class="act-btn primary" id="btn-inv">&#9876; Bag</button>
+      <button class="act-btn magic" id="btn-skill">&#10022; Skill</button>
+      <button class="act-btn" id="btn-stairs">&#9660; Down</button>
+      <button class="act-btn shop" id="btn-shop" style="display:none">$ Shop</button>
+    </div>
+  </div>
+</div>
+<div id="overlay"><div id="modal"><h2>&#9876; Dungeon Crawler</h2><p>Choose your class to begin.</p><div class="class-grid" id="class-grid"></div></div></div>
+<script>
+const CLASSES={Fighter:{icon:'&#9876;',hp:30,mp:5,str:16,dex:10,con:14,int:8,wis:10,cha:10,weapon:{name:'Longsword',dmg:[4,10],bonus:2,rarity:'uncommon'},armor:{name:'Chain Mail',ac:4,rarity:'uncommon'},skill:{name:'Power Strike',desc:'2x damage',mp:3,fn:'powerStrike'},desc:'Tank, high melee damage'},Rogue:{icon:'&#128d7;',hp:20,mp:8,str:10,dex:18,con:10,int:12,wis:8,cha:12,weapon:{name:'Daggers',dmg:[2,6],bonus:4,rarity:'uncommon'},armor:{name:'Leather Armor',ac:2,rarity:'common'},skill:{name:'Backstab',desc:'3x damage',mp:2,fn:'backstab'},desc:'Glass cannon, DEX-based'},Mage:{icon:'&#128302;',hp:14,mp:24,str:6,dex:12,con:8,int:18,wis:14,cha:12,weapon:{name:'Staff',dmg:[1,6],bonus:0,rarity:'common'},armor:{name:'Robes',ac:0,rarity:'common'},skill:{name:'Fireball',desc:'3d8 fire damage',mp:5,fn:'fireball'},desc:'Powerful spells, fragile'},Cleric:{icon:'&#10013;',hp:22,mp:18,str:12,dex:8,con:14,int:10,wis:18,cha:14,weapon:{name:'Mace',dmg:[2,8],bonus:1,rarity:'common'},armor:{name:'Scale Mail',ac:3,rarity:'common'},skill:{name:'Heal',desc:'2d8+WIS HP',mp:4,fn:'healSkill'},desc:'Sustain, balanced'}};
+const BOSSES=[{name:'Goblin King',icon:'K',hp:60,maxhp:60,atk:[2,8],ac:4,xp:100,gold:[30,60],phase2hp:30,phase2name:'Enraged Goblin King',phase2atk:[3,10],desc:'A cunning tyrant. Calls reinforcements at half HP.',reward:{name:"King's Scepter",dmg:[3,8],bonus:3,rarity:'rare',value:200},rewardType:'weapon',bonusLoot:2},{name:'Lich Mage',icon:'L',hp:90,maxhp:90,atk:[3,8],ac:5,xp:200,gold:[60,120],phase2hp:45,phase2name:'Lich Unleashed',phase2atk:[4,10],desc:'Ancient undead wizard. His phylactery pulses with dark energy.',reward:{name:'Phylactery Shard',ac:5,rarity:'epic',value:400},rewardType:'armor',bonusLoot:3},{name:'Stone Golem',icon:'G',hp:130,maxhp:130,atk:[3,10],ac:8,xp:350,gold:[100,200],phase2hp:65,phase2name:'Cracked Golem',phase2atk:[4,12],desc:'Ancient construct. Impenetrable until cracked.',reward:{name:'Golem Core',dmg:[4,10],bonus:4,rarity:'epic',value:450},rewardType:'weapon',bonusLoot:3},{name:'Demon Lord',icon:'X',hp:180,maxhp:180,atk:[4,10],ac:9,xp:500,gold:[150,300],phase2hp:90,phase2name:'True Demon Form',phase2atk:[5,12],desc:'Pure malice from the abyss.',reward:{name:'Demonbane Blade',dmg:[4,12],bonus:6,rarity:'epic',value:600},rewardType:'weapon',bonusLoot:4},{name:'Ancient Dragon',icon:'A',hp:250,maxhp:250,atk:[5,12],ac:12,xp:800,gold:[300,600],phase2hp:125,phase2name:'Bloodraged Dragon',phase2atk:[6,15],desc:'Asleep here for a thousand years.',reward:{name:'Dragon Scale Armor',ac:12,rarity:'epic',value:700},rewardType:'armor',bonusLoot:5}];
+const MONSTERS=[{name:'Goblin',icon:'g',hp:6,maxhp:6,atk:[1,4],ac:1,xp:5,gold:[1,6]},{name:'Orc',icon:'O',hp:15,maxhp:15,atk:[1,8],ac:2,xp:15,gold:[2,10]},{name:'Skeleton',icon:'S',hp:10,maxhp:10,atk:[1,6],ac:1,xp:10,gold:[1,4]},{name:'Troll',icon:'T',hp:30,maxhp:30,atk:[2,8],ac:4,xp:40,gold:[3,20]},{name:'Dragon Whelp',icon:'D',hp:25,maxhp:25,atk:[2,10],ac:5,xp:60,gold:[5,30]},{name:'Zombie',icon:'z',hp:12,maxhp:12,atk:[1,6],ac:1,xp:12,gold:[1,4]},{name:'Dark Elf',icon:'e',hp:18,maxhp:18,atk:[1,8],ac:3,xp:25,gold:[2,12]},{name:'Mimic',icon:'M',hp:20,maxhp:20,atk:[2,6],ac:3,xp:30,gold:[5,25]}];
+const WEAPONS=[{name:'Short Sword',dmg:[2,6],bonus:1,rarity:'common',value:20},{name:'Battle Axe',dmg:[2,8],bonus:2,rarity:'uncommon',value:60},{name:'Rapier',dmg:[2,6],bonus:3,rarity:'uncommon',value:80},{name:'War Hammer',dmg:[2,10],bonus:2,rarity:'rare',value:150},{name:'Enchanted Blade',dmg:[3,8],bonus:4,rarity:'rare',value:200},{name:'Vorpal Sword',dmg:[3,10],bonus:5,rarity:'epic',value:400},{name:'Flaming Sword',dmg:[2,8],bonus:3,rarity:'rare',value:180},{name:'Mithril Dagger',dmg:[2,6],bonus:4,rarity:'rare',value:170},{name:'Thunder Maul',dmg:[3,10],bonus:3,rarity:'epic',value:380}];
+const ARMORS=[{name:'Padded Armor',ac:1,rarity:'common',value:15},{name:'Leather Armor',ac:2,rarity:'common',value:30},{name:'Ring Mail',ac:3,rarity:'common',value:50},{name:'Chain Mail',ac:4,rarity:'uncommon',value:100},{name:'Plate Armor',ac:6,rarity:'rare',value:250},{name:'Mithril Coat',ac:7,rarity:'rare',value:320},{name:'Dragon Scale',ac:8,rarity:'epic',value:500}];
+const POTIONS=[{name:'Healing Potion',effect:'heal',val:[2,8],rarity:'common',value:25},{name:'Greater Heal',effect:'heal',val:[4,8],rarity:'uncommon',value:60},{name:'Mana Potion',effect:'mp',val:[1,6],rarity:'common',value:20},{name:'Full Restore',effect:'heal',val:[8,12],rarity:'rare',value:120},{name:'Elixir of Str',effect:'str',val:2,rarity:'rare',value:200}];
+const W=22,H=14,BAG_SIZE=12;
+let G={player:null,map:[],entities:[],items:[],floor:1,turn:0,bossDefeated:false,merchantPos:null,merchantStock:null};
+let statPoints=0;
+function isBossFloor(f){return f>0&&f%5===0;}
+function isShopFloor(f){return f>0&&f%3===0&&!isBossFloor(f);}
+function getBoss(f){const idx=Math.floor(f/5)-1;const base=BOSSES[Math.min(idx,BOSSES.length-1)];const scale=1+Math.max(0,idx-(BOSSES.length-1))*0.4;return{...base,hp:Math.floor(base.maxhp*scale),maxhp:Math.floor(base.maxhp*scale),phase:1,phaseChanged:false};}
+function roll(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function rollArr(a){return roll(a[0],a[1]);}
+function droll(n,d){let t=0;for(let i=0;i<n;i++)t+=roll(1,d);return t;}
+function sMod(s){return Math.floor((s-10)/2);}
+function rc(r){return r==='epic'?'#9b59b6':r==='rare'?'#3498db':r==='uncommon'?'#2ecc71':'#888';}
+function itemVal(item){const d=item.data||item;return d.value||Math.floor(d.dmg?d.dmg[1]*d.bonus*4:d.ac!==undefined?d.ac*30:10);}
+function sellVal(item){return Math.max(1,Math.floor(itemVal(item)*0.4));}
+function itemStatStr(item){const d=item.data||item;if(d.dmg)return d.dmg[0]+'-'+d.dmg[1]+'+'+d.bonus;if(d.ac!==undefined)return'AC+'+d.ac;if(d.effect==='heal')return Array.isArray(d.val)?'Heal '+d.val[0]+'-'+d.val[1]:'Heal +'+d.val;if(d.effect==='mp')return'MP restore';if(d.effect==='str')return'STR +'+d.val;return'';}
+function makePlayer(cls){const c=CLASSES[cls];return{cls,x:1,y:1,hp:c.hp,maxHp:c.hp,mp:c.mp,maxMp:c.mp,str:c.str,dex:c.dex,con:c.con,int:c.int,wis:c.wis,cha:c.cha,ac:c.armor.ac,xp:0,level:1,xpNext:10,weapon:{...c.weapon},armor:{...c.armor},skill:c.skill,gold:20,bag:[],bossesKilled:0};}
+function addToBag(item){if(G.player.bag.length>=BAG_SIZE){log('Bag full!','log-miss');return false;}G.player.bag.push(item);return true;}
+function generateMap(){
+  G.bossDefeated=false;G.merchantPos=null;G.merchantStock=null;
+  let map=Array.from({length:H},()=>Array(W).fill('#'));
+  const boss=isBossFloor(G.floor),shop=isShopFloor(G.floor);
+  const rooms=[];
+  if(boss){rooms.push({x:1,y:1,w:5,h:4});rooms.push({x:Math.floor(W/2)-4,y:Math.floor(H/2)-3,w:9,h:7});}
+  else{const nr=5+Math.floor(G.floor*0.4);for(let r=0;r<nr*10&&rooms.length<nr;r++){const rw=roll(4,7),rh=roll(3,5),rx=roll(1,W-rw-1),ry=roll(1,H-rh-1);let ok=true;for(const rm of rooms)if(rx<rm.x+rm.w+1&&rx+rw>rm.x-1&&ry<rm.y+rm.h+1&&ry+rh>rm.y-1){ok=false;break;}if(ok)rooms.push({x:rx,y:ry,w:rw,h:rh});}}
+  for(const r of rooms)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)map[y][x]='.';
+  for(let i=1;i<rooms.length;i++){const a=rooms[i-1],b=rooms[i];let cx=Math.floor(a.x+a.w/2),cy=Math.floor(a.y+a.h/2);const bx=Math.floor(b.x+b.w/2),by=Math.floor(b.y+b.h/2);while(cx!==bx){map[cy][cx]='.';cx+=cx<bx?1:-1;}while(cy!==by){map[cy][cx]='.';cy+=cy<by?1:-1;}}
+  if(G.player){G.player.x=rooms[0].x+1;G.player.y=rooms[0].y+1;}
+  G.entities=[];G.items=[];
+  if(boss){const br=rooms[1],bx=Math.floor(br.x+br.w/2),by=Math.floor(br.y+br.h/2);const b=getBoss(G.floor);b.x=bx;b.y=by;G.entities=[b];map[rooms[0].y+1][rooms[0].x+3]='*';for(let i=0;i<2;i++)spawnItem(br.x+roll(0,br.w-1),br.y+roll(0,br.h-1));}
+  else{const sr=rooms[rooms.length-1];map[sr.y+1][sr.x+1]='>';const nm=3+G.floor;for(let i=1;i<rooms.length&&G.entities.length<nm;i++){const rm=rooms[i],tier=Math.min(Math.floor(G.floor/2),MONSTERS.length-1);const mIdx=roll(0,Math.min(tier+2,MONSTERS.length-1));const base=MONSTERS[mIdx],sc=1+(G.floor-1)*0.25;G.entities.push({...base,hp:Math.floor(base.maxhp*sc),maxhp:Math.floor(base.maxhp*sc),ac:base.ac+Math.floor(G.floor/3),x:rm.x+roll(0,rm.w-1),y:rm.y+roll(0,rm.h-1)});}for(let i=1;i<rooms.length;i++)if(Math.random()<0.55)spawnItem(rooms[i].x+roll(0,rooms[i].w-1),rooms[i].y+roll(0,rooms[i].h-1));if(shop&&rooms.length>2){const shr=rooms[Math.floor(rooms.length/2)];G.merchantPos={x:shr.x+Math.floor(shr.w/2),y:shr.y+Math.floor(shr.h/2)};}}
+  return map;
+}
+function spawnItem(x,y){const r=Math.random(),tier=Math.min(G.floor,WEAPONS.length-1);let item;if(r<0.3)item={type:'potion',x,y,icon:'!',data:{...POTIONS[roll(0,POTIONS.length-1)]}};else if(r<0.55)item={type:'weapon',x,y,icon:'/',data:{...WEAPONS[roll(0,Math.min(tier,WEAPONS.length-1))]}};else if(r<0.75)item={type:'armor',x,y,icon:']',data:{...ARMORS[roll(0,Math.min(tier,ARMORS.length-1))]}};else item={type:'gold',x,y,icon:'$',data:{amount:roll(5,25)*Math.max(1,G.floor)}};G.items.push(item);}
+function isBossEnt(e){return BOSSES.some(b=>b.name===e.name||b.phase2name===e.name);}
+function updateBossBar(){const boss=G.entities.find(e=>isBossEnt(e)&&e.hp>0);const wrap=document.getElementById('boss-bar-wrap');if(boss){wrap.classList.add('visible');document.getElementById('boss-name-lbl').textContent=boss.name+(boss.phase===2?' [P2]':'');document.getElementById('boss-hp-lbl').textContent=boss.hp+'/'+boss.maxhp;document.getElementById('boss-bar-fill').style.width=Math.max(0,boss.hp/boss.maxhp*100)+'%';}else wrap.classList.remove('visible');}
+function renderMap(){const p=G.player,fov=7;let out='';for(let y=0;y<H;y++){for(let x=0;x<W;x++){const d=Math.abs(x-p.x)+Math.abs(y-p.y);if(d>fov){out+=' ';continue;}const ent=G.entities.find(e=>e.x===x&&e.y===y&&e.hp>0);const itm=G.items.find(i=>i.x===x&&i.y===y);const isMerch=G.merchantPos&&G.merchantPos.x===x&&G.merchantPos.y===y;if(x===p.x&&y===p.y)out+=cc('@','#ffd700');else if(ent)out+=cc(ent.icon,isBossEnt(ent)?'#e74c3c':'#c0392b');else if(isMerch)out+=cc('$','#2ecc71');else if(itm)out+=cc(itm.icon,itm.type==='potion'?'#e74c3c':itm.type==='gold'?'#f1c40f':itm.type==='weapon'?'#95a5a6':'#e67e22');else if(G.map[y][x]==='.')out+=cc('.','#334');else if(G.map[y][x]==='#')out+=cc('#','#556');else if(G.map[y][x]==='>')out+=cc('>','#3498db');else if(G.map[y][x]==='*')out+=cc('*','#ffd700');else out+=' ';}out+='\n';}document.getElementById('map').innerHTML=out;}
+function cc(c,col){return'<span style="color:'+col+'">'+c+'</span>';}
+function updateHUD(){const p=G.player;const fl=document.getElementById('hud-floor');const boss=isBossFloor(G.floor),shop=isShopFloor(G.floor);fl.textContent='Floor '+G.floor+(boss?' [BOSS]':shop?' [SHOP]':'')+' | T'+G.turn;fl.className='hud-floor'+(boss?' boss-floor':shop?' shop-floor':'');document.getElementById('hud-name').textContent=p.cls+' Lv'+p.level+(statPoints>0?' \u2B06':'')+' | Bag '+p.bag.length+'/'+BAG_SIZE;document.getElementById('hp-txt').textContent=p.hp+'/'+p.maxHp;document.getElementById('mp-txt').textContent=p.mp+'/'+p.maxMp;document.getElementById('xp-txt').textContent=p.xp+'/'+p.xpNext;document.getElementById('hp-bar').style.width=Math.max(0,p.hp/p.maxHp*100)+'%';document.getElementById('mp-bar').style.width=Math.max(0,p.mp/p.maxMp*100)+'%';document.getElementById('xp-bar').style.width=Math.min(100,p.xp/p.xpNext*100)+'%';document.getElementById('hud-stats').innerHTML='<div class="stat-pill">STR <span>'+p.str+'</span></div><div class="stat-pill">DEX <span>'+p.dex+'</span></div><div class="stat-pill">AC <span>'+(p.ac+sMod(p.dex))+'</span></div><div class="stat-pill">ATK <span>+'+(sMod(p.str)+p.weapon.bonus)+'</span></div><div class="stat-pill">Gold <span>'+p.gold+'gp</span></div>';updateBossBar();const nearMerch=G.merchantPos&&Math.abs(p.x-G.merchantPos.x)+Math.abs(p.y-G.merchantPos.y)<=1;document.getElementById('btn-shop').style.display=nearMerch?'':'none';}
+function log(msg,cls){const a=document.getElementById('log-area');const d=document.createElement('div');d.className='log-entry '+(cls||'');d.textContent=msg;a.appendChild(d);a.scrollTop=a.scrollHeight;}
+function tryMove(dx,dy){const p=G.player,nx=p.x+dx,ny=p.y+dy;if(nx<0||ny<0||nx>=W||ny>=H)return;const ent=G.entities.find(e=>e.x===nx&&e.y===ny&&e.hp>0);if(ent){attackMonster(ent);endTurn();return;}if(G.map[ny][nx]==='#')return;p.x=nx;p.y=ny;checkItems();endTurn();}
+function attackMonster(m){const p=G.player,toHit=roll(1,20)+sMod(p.str)+p.weapon.bonus,ac=m.ac+10;if(toHit>=ac){const dmg=Math.max(1,rollArr(p.weapon.dmg)+sMod(p.str));m.hp-=dmg;log('You hit '+m.name+' for '+dmg+'!'+(isBossEnt(m)?' ('+m.hp+'/'+m.maxhp+')':''),isBossEnt(m)?'log-boss':'log-hit');if(isBossEnt(m))checkBossPhase(m);if(m.hp<=0)killMonster(m);}else log('You miss '+m.name+'.','log-miss');}
+function checkBossPhase(boss){const bt=BOSSES.find(b=>b.name===boss.name||b.phase2name===boss.name);if(!bt||boss.phase===2)return;if(boss.hp<=bt.phase2hp&&!boss.phaseChanged){boss.phase=2;boss.phaseChanged=true;boss.atk=bt.phase2atk;boss.ac+=2;const old=boss.name;boss.name=bt.phase2name;log('*** '+old+' \u2192 PHASE 2: '+boss.name+'!','log-boss');if(bt.name==='Goblin King'){G.entities.push({...MONSTERS[0],hp:8,maxhp:8,x:boss.x+1,y:boss.y});G.entities.push({...MONSTERS[0],hp:8,maxhp:8,x:boss.x-1,y:boss.y});log('Goblin King summons minions!','log-boss');}}}
+function killMonster(m){const p=G.player,gold=rollArr(m.gold);p.xp+=m.xp;p.gold+=gold;if(isBossEnt(m)){p.bossesKilled++;const bt=BOSSES.find(b=>b.name===m.name||b.phase2name===m.name);showBossVictory(m,bt);}else{log(m.name+' dies! +'+m.xp+'xp +'+gold+'gp','log-loot');if(Math.random()<0.4)spawnItem(m.x,m.y);}if(p.xp>=p.xpNext)levelUp();}
+function showBossVictory(m,bt){const p=G.player,bossGold=rollArr(m.gold)*5;p.gold+=bossGold;G.bossDefeated=true;const ri=bt.reward,isWpn=bt.rewardType==='weapon';G.items.push({type:bt.rewardType,x:m.x,y:m.y,icon:isWpn?'/':']',data:{...ri}});for(let i=0;i<(bt.bonusLoot||2);i++)spawnItem(m.x+roll(-2,2),m.y+roll(-2,2));log(m.name+' DEFEATED! +'+m.xp+'xp +'+bossGold+'gp','log-boss');log('Legendary '+ri.name+' dropped! Walk over it to pick up.','log-loot');showModal('<h2>&#9876; Boss Defeated!</h2><div class="boss-intro"><h3>'+m.name+' slain!</h3><p>+'+m.xp+' XP | +'+bossGold+'gp</p></div><div class="boss-reward"><h3>Legendary Drop: '+ri.name+'</h3><p style="color:'+rc(ri.rarity)+';font-weight:bold">'+ri.name+' ('+ri.rarity+')</p><p style="font-size:11px;color:#aaa">'+(isWpn?'DMG: '+ri.dmg[0]+'-'+ri.dmg[1]+' +'+ri.bonus:'AC: +'+ri.ac)+'</p><p style="font-size:11px;color:#666">Walk over it to equip or bag!</p></div><p style="font-size:11px;color:#888">+'+bt.bonusLoot+' bonus items nearby. Find portal (*) to descend.</p><button class="modal-btn" onclick="closeModal()">Claim the spoils!</button>');}
+function levelUp(){const p=G.player;p.level++;p.xp-=p.xpNext;p.xpNext=Math.floor(p.xpNext*1.5);statPoints=3;p.maxHp+=roll(4,8)+sMod(p.con);p.hp=Math.min(p.hp+10,p.maxHp);p.maxMp+=2;p.mp=Math.min(p.mp+2,p.maxMp);log('LEVEL UP! Lv'+p.level+'! +3 stat points!','log-level');setTimeout(showLevelUp,400);}
+function monstersAct(){const p=G.player;for(const m of G.entities){if(m.hp<=0)continue;const d=Math.abs(m.x-p.x)+Math.abs(m.y-p.y);if(d<=1){const toHit=roll(1,20)+Math.floor(m.ac/2)+(isBossEnt(m)?3:0);const pac=p.ac+sMod(p.dex)+10;if(toHit>=pac){const dmg=Math.max(1,rollArr(m.atk));p.hp-=dmg;log(m.name+' hits you for '+dmg+'!',isBossEnt(m)?'log-boss':'log-hit');if(p.hp<=0){gameOver();return;}}else log(m.name+' misses.','log-miss');}else if(d<=8){const dx=Math.sign(p.x-m.x),dy=Math.sign(p.y-m.y);for(const[tx,ty]of[[dx,0],[0,dy],[dx,dy]]){const nx=m.x+tx,ny=m.y+ty;if(nx>=0&&ny>=0&&nx<W&&ny<H&&G.map[ny][nx]!=='#'&&!G.entities.find(e=>e!==m&&e.x===nx&&e.y===ny&&e.hp>0)&&!(nx===p.x&&ny===p.y)){m.x=nx;m.y=ny;break;}}}}}
+function endTurn(){G.turn++;monstersAct();const p=G.player;if(G.turn%10===0&&p.hp<p.maxHp)p.hp=Math.min(p.maxHp,p.hp+1);if(G.turn%15===0&&p.mp<p.maxMp)p.mp=Math.min(p.maxMp,p.mp+1);updateHUD();renderMap();}
+function checkItems(){const p=G.player;const here=G.items.filter(i=>i.x===p.x&&i.y===p.y);for(const item of here){if(item.type==='gold'){G.items=G.items.filter(i=>i!==item);p.gold+=item.data.amount;log('Picked up '+item.data.amount+'gp!','log-loot');}else{showPickup(item);break;}}const nearMerch=G.merchantPos&&Math.abs(p.x-G.merchantPos.x)+Math.abs(p.y-G.merchantPos.y)<=1;if(nearMerch)log('Merchant nearby - press $ Shop!','log-shop');}
+function showPickup(item){const p=G.player,d=item.data;const isWpn=item.type==='weapon',isArmor=item.type==='armor',isPot=item.type==='potion';const statStr=isWpn?'DMG '+d.dmg[0]+'-'+d.dmg[1]+' +'+d.bonus:isArmor?'AC +'+d.ac:d.name;const cmp=isWpn?'vs '+p.weapon.name+' ('+p.weapon.dmg[0]+'-'+p.weapon.dmg[1]+'+'+p.weapon.bonus+')':isArmor?'vs '+p.armor.name+' (AC+'+p.ac+')':'';const sv=sellVal(item),bagFull=p.bag.length>=BAG_SIZE;const si=JSON.stringify(item).replace(/"/g,"'");showModal('<h2>Item Found!</h2><div class="inv-item '+(d.rarity||'common')+'" style="margin-bottom:10px"><div class="inv-item-info"><div class="inv-item-name" style="color:'+rc(d.rarity||'common')+'">'+d.name+'</div><div class="inv-item-stat">'+statStr+'</div><div class="inv-item-rarity">'+(d.rarity||'')+' - sell: '+sv+'gp</div></div></div>'+(cmp?'<p style="color:#555;font-size:11px;margin-bottom:8px">'+cmp+'</p>':'')+'<button class="modal-btn" onclick="doEquip('+si+');closeModal()">'+(isPot?'Use Now':'Equip Now')+'</button><button class="modal-btn" onclick="doBag('+si+');closeModal()"'+(bagFull?' disabled style="opacity:0.4"':'')+'>Add to Bag '+(bagFull?'(FULL)':'('+p.bag.length+'/'+BAG_SIZE+')')+'</button><button class="modal-btn danger" onclick="closeModal()">Leave on Floor</button>');}
+function doEquip(item){const p=G.player,d=item.data;G.items=G.items.filter(i=>!(i.x===item.x&&i.y===item.y&&i.data&&i.data.name===d.name));if(item.type==='weapon')p.weapon={...d};else if(item.type==='armor'){p.armor={...d};p.ac=d.ac;}else if(item.type==='potion'){applyPotion(d);return;}log('Equipped '+d.name+'!','log-good');updateHUD();}
+function doBag(item){if(addToBag({...item})){G.items=G.items.filter(i=>!(i.x===item.x&&i.y===item.y&&i.data&&i.data.name===item.data.name));log(item.data.name+' added to bag.','log-info');updateHUD();}}
+function applyPotion(d){const p=G.player;if(d.effect==='heal'){const h=Array.isArray(d.val)?rollArr(d.val):d.val;p.hp=Math.min(p.maxHp,p.hp+h);log('Healed '+h+' HP!','log-good');}else if(d.effect==='mp'){const m=Array.isArray(d.val)?rollArr(d.val):d.val;p.mp=Math.min(p.maxMp,p.mp+m);log('Restored '+m+' MP!','log-good');}else if(d.effect==='str'){p.str+=d.val;log('STR +'+d.val+'!','log-level');}updateHUD();}
+function gameOver(){showModal('<h2 style="color:#e74c3c">You Died!</h2><p>Floor '+G.floor+' | Level '+G.player.level+' | Turn '+G.turn+'</p><p>Gold: '+G.player.gold+'gp | Bosses slain: '+G.player.bossesKilled+'</p><button class="modal-btn" onclick="location.reload()">Play Again</button>');}
+function showModal(html){document.getElementById('modal').innerHTML=html;document.getElementById('overlay').style.display='flex';}
+function closeModal(){document.getElementById('overlay').style.display='none';}
+function showInventory(){const p=G.player;let bagHtml='';if(!p.bag.length){bagHtml='<p style="color:#555;font-size:12px;padding:8px 0">Bag is empty.</p>';}else p.bag.forEach((item,idx)=>{const d=item.data,sv=sellVal(item),isPot=item.type==='potion';bagHtml+='<div class="inv-item '+(d.rarity||'common')+'"><div class="inv-item-info"><div class="inv-item-name" style="color:'+rc(d.rarity||'common')+'">'+d.name+'</div><div class="inv-item-stat">'+itemStatStr(item)+'</div><div class="inv-item-rarity">'+(d.rarity||'')+' - sell: '+sv+'gp</div></div><div class="inv-btn-row">'+(isPot?'<button class="inv-btn use" onclick="bagUse('+idx+');showInventory()">Use</button>':'<button class="inv-btn equip" onclick="bagEquip('+idx+');showInventory()">Equip</button>')+'<button class="inv-btn drop" onclick="bagDrop('+idx+');showInventory()">Drop</button></div></div>';});showModal('<h2>&#9876; Bag ('+p.bag.length+'/'+BAG_SIZE+')</h2><div class="equipped-row"><div class="eq-slot"><div class="eq-slot-label">Weapon</div><div class="eq-slot-name">'+p.weapon.name+'</div><div class="eq-slot-stat">'+p.weapon.dmg[0]+'-'+p.weapon.dmg[1]+'+'+p.weapon.bonus+'</div></div><div class="eq-slot"><div class="eq-slot-label">Armor</div><div class="eq-slot-name">'+p.armor.name+'</div><div class="eq-slot-stat">AC +'+p.ac+'</div></div></div><div class="section-title">Bag contents</div>'+bagHtml+'<div class="section-title">Stats</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;margin-bottom:10px">'+['str','dex','con','int','wis','cha'].map(s=>'<div style="background:#1a1a24;padding:5px 8px;border-radius:4px"><span style="color:#666">'+s.toUpperCase()+'</span> <span style="color:#ffd700">'+p[s]+'</span></div>').join('')+'</div>'+(statPoints>0?'<button class="modal-btn" onclick="closeModal();showLevelUp()">\u2B06 Spend '+statPoints+' stat points</button>':'')+'<div class="gold-display">'+p.gold+'gp - Bosses: '+p.bossesKilled+'</div><button class="modal-btn" onclick="closeModal()" style="color:#888;margin-top:4px">Close</button>');}
+function bagEquip(idx){const p=G.player,item=p.bag[idx];if(!item)return;p.bag.splice(idx,1);if(item.type==='weapon')p.weapon={...item.data};else{p.armor={...item.data};p.ac=item.data.ac;}log('Equipped '+item.data.name+'!','log-good');updateHUD();}
+function bagUse(idx){const p=G.player,item=p.bag[idx];if(!item)return;p.bag.splice(idx,1);applyPotion(item.data);}
+function bagDrop(idx){const p=G.player,item=p.bag[idx];if(!item)return;p.bag.splice(idx,1);G.items.push({...item,x:p.x,y:p.y});log('Dropped '+item.data.name+'.','log-miss');updateHUD();}
+function showLevelUp(){if(statPoints<=0)return;const p=G.player;showModal('<h2>\u2B06 Level '+p.level+'!</h2><p>Spend '+statPoints+' stat point'+(statPoints>1?'s':'')+'.</p><div class="stat-up-grid">'+['str','dex','con','int','wis','cha'].map(s=>'<div class="stat-up-btn" onclick="spendStat(\''+s+'\')"><div class="sn">'+s.toUpperCase()+'</div><div class="sv">'+p[s]+'</div></div>').join('')+'</div><button class="modal-btn" onclick="closeModal()" style="color:#888">Done</button>');}
+function spendStat(stat){if(statPoints<=0)return;G.player[stat]++;statPoints--;if(stat==='con'){G.player.maxHp++;G.player.hp++;}if(stat==='wis'){G.player.maxMp++;G.player.mp++;}log(stat.toUpperCase()+' \u2192 '+G.player[stat]+'!','log-level');if(statPoints>0)showLevelUp();else closeModal();updateHUD();}
+function useSkill(){const p=G.player,sk=p.skill;if(p.mp<sk.mp){log('Need '+sk.mp+' MP.','log-miss');return;}const target=G.entities.filter(e=>e.hp>0&&Math.abs(e.x-p.x)+Math.abs(e.y-p.y)<=5);if(!target.length){log('No targets in range!','log-miss');return;}const m=target.reduce((a,b)=>Math.abs(a.x-p.x)+Math.abs(a.y-p.y)<Math.abs(b.x-p.x)+Math.abs(b.y-p.y)?a:b);p.mp-=sk.mp;if(sk.fn==='fireball'){const dmg=droll(3,8)+sMod(p.int);m.hp-=dmg;log('Fireball: '+dmg+' fire on '+m.name+'!','log-hit');if(isBossEnt(m))checkBossPhase(m);if(m.hp<=0)killMonster(m);}else if(sk.fn==='healSkill'){const h=droll(2,8)+sMod(p.wis);p.hp=Math.min(p.maxHp,p.hp+h);log('Healed '+h+' HP!','log-good');}else if(sk.fn==='powerStrike'){const dmg=Math.max(1,rollArr(p.weapon.dmg)*2+sMod(p.str));m.hp-=dmg;log('Power Strike: '+dmg+' on '+m.name+'!','log-hit');if(isBossEnt(m))checkBossPhase(m);if(m.hp<=0)killMonster(m);}else if(sk.fn==='backstab'){const dmg=Math.max(1,rollArr(p.weapon.dmg)*3+sMod(p.dex));m.hp-=dmg;log('Backstab: '+dmg+' on '+m.name+'!','log-hit');if(isBossEnt(m))checkBossPhase(m);if(m.hp<=0)killMonster(m);}endTurn();}
+function tryDescend(){const p=G.player;if(isBossFloor(G.floor)){if(!G.bossDefeated){log('Defeat the boss first!','log-miss');return;}if(G.map[p.y][p.x]==='*')descend();else log('Find the exit portal (*).','log-miss');}else{if(G.map[p.y][p.x]==='>')descend();else log('No stairs here. Find >.','log-miss');}}
+function descend(){G.floor++;if(isBossFloor(G.floor)){const bd=BOSSES[Math.min(G.floor/5-1,BOSSES.length-1)];log('*** BOSS FLOOR '+G.floor+' ***','log-boss');showModal('<h2 style="color:#e74c3c">&#9888; Boss Floor '+G.floor+'</h2><div class="boss-intro"><h3>'+bd.name+'</h3><p>'+bd.desc+'</p></div><p style="font-size:11px;color:#9b59b6">Legendary drop: '+bd.reward.name+'</p><p style="font-size:11px;color:#888">+'+bd.bonusLoot+' bonus item drops on kill!</p><button class="modal-btn danger" onclick="closeModal();finishDescend()">Enter Boss Chamber</button><button class="modal-btn" onclick="closeModal();G.floor--;log(\'Retreated.\',\'log-info\')" style="color:#888">Retreat</button>');}else if(isShopFloor(G.floor)){log('Floor '+G.floor+': A merchant\'s lantern flickers ahead...','log-shop');finishDescend();}else finishDescend();}
+function finishDescend(){log('Descending to floor '+G.floor+'...','log-info');G.map=generateMap();endTurn();}
+function generateMerchantStock(){const stock=[],tier=Math.min(G.floor,WEAPONS.length-1);for(let i=0;i<3;i++){const w={...WEAPONS[roll(Math.max(0,tier-2),Math.min(tier+1,WEAPONS.length-1))]};w.price=Math.floor((w.value||80)*roll(120,160)/100);stock.push({type:'weapon',data:w,price:w.price});}for(let i=0;i<2;i++){const a={...ARMORS[roll(Math.max(0,tier-2),Math.min(tier,ARMORS.length-1))]};a.price=Math.floor((a.value||60)*roll(120,160)/100);stock.push({type:'armor',data:a,price:a.price});}for(let i=0;i<3;i++){const pt={...POTIONS[roll(0,POTIONS.length-1)]};pt.price=Math.floor((pt.value||25)*1.3);stock.push({type:'potion',data:pt,price:pt.price});}return stock;}
+function showShop(){const p=G.player;const nearMerch=G.merchantPos&&Math.abs(p.x-G.merchantPos.x)+Math.abs(p.y-G.merchantPos.y)<=1;if(!nearMerch){log('No merchant nearby.','log-miss');return;}if(!G.merchantStock)G.merchantStock=generateMerchantStock();const stock=G.merchantStock;const buyHtml=stock.map((item,idx)=>{const d=item.data,canAfford=p.gold>=item.price,bagFull=p.bag.length>=BAG_SIZE;const stat=d.dmg?'DMG '+d.dmg[0]+'-'+d.dmg[1]+'+'+d.bonus:d.ac!==undefined?'AC +'+d.ac:itemStatStr({type:item.type,data:d});return'<div class="shop-item"><div class="shop-item-info"><div class="shop-item-name" style="color:'+rc(d.rarity||'common')+'">'+d.name+'</div><div class="shop-item-stat">'+stat+' - '+(d.rarity||'common')+'</div></div><div style="text-align:right;flex-shrink:0"><div style="color:#2ecc71;font-size:11px;font-weight:bold">'+item.price+'gp</div><button class="shop-buy-btn" onclick="buyItem('+idx+')"'+((!canAfford||bagFull)?' disabled':'')+'>'+(bagFull?'Bag full':!canAfford?'Too poor':'Buy')+'</button></div></div>';}).join('');let sellHtml='';p.bag.forEach((item,idx)=>{const sv=sellVal(item);sellHtml+='<div class="shop-item" style="border-left-color:#f39c12"><div class="shop-item-info"><div class="shop-item-name">'+item.data.name+'</div><div class="shop-item-stat">'+itemStatStr(item)+'</div></div><div style="text-align:right;flex-shrink:0"><div style="color:#f39c12;font-size:11px;font-weight:bold">'+sv+'gp</div><button class="shop-buy-btn" style="border-color:#f39c12;color:#f39c12" onclick="sellItem('+idx+')">Sell</button></div></div>';});showModal('<h2 style="color:#2ecc71">$ Wandering Merchant</h2><div class="gold-display">'+p.gold+'gp - Bag: '+p.bag.length+'/'+BAG_SIZE+'</div><div class="section-title">Buy</div>'+buyHtml+(p.bag.length>0?'<div class="section-title">Sell from bag</div>'+sellHtml:'<p style="color:#555;font-size:11px;margin-top:8px">Nothing in bag to sell.</p>')+'<button class="modal-btn" onclick="closeModal()" style="color:#888;margin-top:8px">Leave shop</button>');}
+function buyItem(idx){const p=G.player,item=G.merchantStock[idx];if(!item||p.gold<item.price){log('Cannot afford that!','log-miss');return;}if(p.bag.length>=BAG_SIZE){log('Bag full!','log-miss');return;}p.gold-=item.price;addToBag({type:item.type,data:{...item.data},x:p.x,y:p.y,icon:item.type==='weapon'?'/':item.type==='armor'?']':'!'});log('Bought '+item.data.name+' for '+item.price+'gp!','log-shop');updateHUD();showShop();}
+function sellItem(idx){const p=G.player,item=p.bag[idx];if(!item)return;const sv=sellVal(item);p.bag.splice(idx,1);p.gold+=sv;log('Sold '+item.data.name+' for '+sv+'gp!','log-shop');updateHUD();showShop();}
+function startGame(cls){G.player=makePlayer(cls);G.map=generateMap();closeModal();log('Welcome, '+cls+'! Find > to descend.','log-info');log('Skill: '+G.player.skill.name+' - '+G.player.skill.desc+' ('+G.player.skill.mp+'MP)','log-info');log('Bag: '+BAG_SIZE+' slots. Merchants on floors 3,6,9...','log-shop');updateHUD();renderMap();}
+document.getElementById('bn').addEventListener('click',()=>tryMove(0,-1));
+document.getElementById('bs').addEventListener('click',()=>tryMove(0,1));
+document.getElementById('bw').addEventListener('click',()=>tryMove(-1,0));
+document.getElementById('be').addEventListener('click',()=>tryMove(1,0));
+document.getElementById('bwait').addEventListener('click',()=>endTurn());
+document.getElementById('btn-inv').addEventListener('click',showInventory);
+document.getElementById('btn-skill').addEventListener('click',useSkill);
+document.getElementById('btn-stairs').addEventListener('click',tryDescend);
+document.getElementById('btn-shop').addEventListener('click',showShop);
+document.addEventListener('keydown',e=>{const km={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};if(km[e.key]){e.preventDefault();if(G.player)tryMove(...km[e.key]);}if(e.key==='.')endTurn();if(e.key==='i'||e.key==='I')showInventory();});
+const cg=document.getElementById('class-grid');
+for(const[name,c]of Object.entries(CLASSES)){const div=document.createElement('div');div.className='class-card';div.innerHTML='<span class="class-icon">'+c.icon+'</span><h3>'+name+'</h3><p>'+c.desc+'</p>';div.onclick=()=>startGame(name);cg.appendChild(div);}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
